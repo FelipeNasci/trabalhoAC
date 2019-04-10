@@ -13,68 +13,111 @@ includelib \masm32\lib\masm32.lib
 
 ;-------    STRINGS   -----------
 
-output	db ? , 0ah, 0h              ; String seguida de nova linha e fim_de_string
-input   db ? , 0ah, 0h              ; String seguida de nova linha e fim_de_string
-write_count dd 0                    ; Variavel para armazenar caracteres escritos na console
+output	db 10 dup(0)									;	String seguida de nova linha e fim_de_string
+input   db 10 dup(0)									;	String seguida de nova linha e fim_de_string
+write_count dd 0									;	Variavel para armazenar caracteres escritos na console
 write_c dd 0
 
-texto   db 0Dh, 0Ah, 'Insira o numero de notas: ', 0
+texto   db "Insira o numero de notas da disciplina: ", 0h
 texto2  db "Insira uma nota " , 0h
+texto3  db "Insira o nome do aluno ", 0h
+aprovado  db 0ah,"** APROVADO ** com media = " , 0h
+reprovado db 0ah, "** REPROVADO ** com media = " , 0h
+final	    db 0ah, "** FINAL ** precisando de " , 0h
+
+aluno   db  100 dup(0)
 
 ;-------    HANDLES   -----------
 chaveSaida   dd 0
 chaveEntrada dd 0
 
-nNotas	dd 3
-cont	dd ?
+;-------    VARIAVEIS   -----------
+_sete	real8 7.0
+_quatro	real8 4.0
 
-nota	real8 0.0						;   variavel auxiliar que armazena uma nota inserida
-soma	real8 0.0						;   Soma das notas
-media	real8 0.0						;   media das notas
-nNotasf	real8 3.0
+nNotas	real8 3.0
+cont	real8 0.0
+incr 	real8 1.0
+
+nota	real8 0.0									;   variavel auxiliar que armazena uma nota inserida
+soma	real8 0.0									;   Soma das notas
+media	real8 0.0									;   media das notas
+
 .code  
 start:
 
 	call OBTER_HANDLES
 	call RESET_REG
+
+    invoke WriteConsole, chaveSaida, addr texto3, sizeof texto3, addr write_count, NULL	;	imprime na tela
+    invoke ReadConsole, chaveEntrada, addr aluno, sizeof aluno, addr write_c, NULL
+
+											;   Obtem o numero de notas e atribui o valor para nNotas
+
+    invoke WriteConsole, chaveSaida, addr texto, sizeof texto, addr write_count, NULL	;	imprime na tela
+    invoke ReadConsole, chaveEntrada, addr input, sizeof input, addr write_c, NULL	;	Captura o dado pelo teclado
 	
-									;   Obtem o numero de notas e atribui o valor para nNotas
-
-    invoke WriteConsole, chaveSaida, addr texto, sizeof texto, addr write_count, NULL
-    invoke ReadConsole, chaveEntrada, addr input, sizeof input + 1, addr write_c, NULL
-	
-    call REMOVE_LIXO				;	Remove caracteres invalidos do console
-    call OBTER_VALOR				;	Insere a quantidade de notas na pilha
-    pop nNotas						;	Atribui a quant de notas para nNotas	
-
-	mov cont, 0   					;	zera o contador
-
+	invoke StrToFloat, addr [input], addr [nNotas]
+		
         ENQUANTO_HOUVER_NOTAS:
 
-            invoke WriteConsole, chaveSaida, addr texto2, sizeof texto2, addr write_count, NULL
-            invoke ReadConsole, chaveEntrada, addr input, sizeof input + 1, addr write_c, NULL
+            invoke WriteConsole, chaveSaida, addr texto2, sizeof texto2, addr write_count, NULL	
+            invoke ReadConsole, chaveEntrada, addr input, sizeof input, addr write_c, NULL		
 
-			invoke StrToFloat, addr [input], addr [nota]
+			invoke StrToFloat, addr [input], addr [nota]			;	Converte o dado recebido para float
+			
 			call FUNCAO_SOMA
 			
-			    ;	finit                            ;reset fpu stacks to default
-				;	fld    dword ptr [single_value2] ;single_value2 to fpu stack(st1)
-				;	fld    dword ptr [single_value1] ;single_value1 to fpu stack(st0)
-				;	fcom                             ;compare st0 with st1
-				;	fstsw  ax                        ;ax := fpu status register
-						
-            inc cont
-            mov ebx, nNotas
-            cmp cont, ebx
-            jl ENQUANTO_HOUVER_NOTAS
-            
+			call INC_CONT							;	incrementa cont
+			call COMPARA_CONT_nNOTAS					;	compara se cont eh menor que nNotas
+
+			ja    FIM_ENQUANTO_HOUVER_NOTAS					;	Se maior -> break
+			jb    ENQUANTO_HOUVER_NOTAS					;	Se menor -> cont++
+			;jz    FIM_ENQUANTO_HOUVER_NOTAS				;	Se igual -> break
+			
         FIM_ENQUANTO_HOUVER_NOTAS:
 
 		
 	call FUNCAO_MEDIA
+
+	fld _sete									;	empilha 7.0
+	call COMPARA_MEDIA								;	compara 7.0 com media
+	fstp _sete
+
+	jb    APROVADO									;	Se 7 < media -> APROVADO
+	jz    APROVADO									;	Se 7 == media -> APROVADO
+
+	fld _quatro									;	empilha 4.0
+	call COMPARA_MEDIA								;	compara 4.0 com media 
+	fstp _quatro
+
+	ja    REPROVADO									;	Se 4 > media -> FINAL
+	jb    FINAL									;	Se 4 < media -> REPROVADO
+	jz    FINAL									;	Se 4 == media -> FINAL
 	
-    invoke FloatToStr, [media], addr [output]
-    invoke WriteConsole, chaveSaida, addr output, sizeof output, addr write_count, NULL
+		APROVADO:
+		                
+                invoke FloatToStr, [media], addr [output]
+                invoke WriteConsole, chaveSaida, addr aprovado, sizeof aprovado, addr write_count, NULL
+                invoke WriteConsole, chaveSaida, addr output, sizeof output, addr write_count, NULL
+                jmp FIM_A_P_F
+		
+		REPROVADO:
+
+                invoke FloatToStr, [media], addr [output]
+                invoke WriteConsole, chaveSaida, addr reprovado, sizeof reprovado, addr write_count, NULL
+                invoke WriteConsole, chaveSaida, addr output, sizeof output, addr write_count, NULL
+                jmp FIM_A_P_F
+
+		FINAL:
+		
+		;Corrigir
+                invoke FloatToStr, [media], addr [output]
+                invoke WriteConsole, chaveSaida, addr final, sizeof final, addr write_count, NULL
+                invoke WriteConsole, chaveSaida, addr output, sizeof output, addr write_count, NULL
+                jmp FIM_A_P_F
+	       
+            FIM_A_P_F:
     
 	invoke ExitProcess, 0
 
@@ -100,7 +143,7 @@ start:
 
 		finit
 		fld soma			;	empilha soma
-		fld nNotasf			;	empilha quantidade de notas
+		fld nNotas			;	empilha quantidade de notas
 		fdiv				;	soma / nNotas
 		fstp media			;	media = soma / nNotas
 
@@ -172,9 +215,52 @@ start:
         xor ecx, ecx
         xor edx, edx
 		
-		finit							;	Reseta FPU
+	finit						;	Reseta FPU
 
         ret
     RESET_REG ENDP
+	
 
-end start
+;********************** INCREMENTA O CONTADOR  *******************
+
+    INC_CONT PROC
+    
+		fld cont				;	add cont na pilha da FPU
+		fld incr				;	add soma na pilha da FPU
+		fadd					;	cont + 1
+		fstp cont				;	soma = cont + 1
+		
+		ret
+	INC_CONT ENDP
+
+;********************** COMPARA SE CONT < nNOTAS  *******************	
+	
+	COMPARA_CONT_nNOTAS PROC
+    
+		fld cont		;	empilha cont na FPU
+		fcom  nNotas   	;	Compara com nNotas
+		fstsw ax        ;	Copia o resultado para ax
+		fwait           ;	Garante que a instrucao foi completada
+		sahf            ;	Transfere a condicao para uma flag da cpu
+
+		fstp cont		;	desempilha cont
+		
+		ret
+	COMPARA_CONT_nNOTAS ENDP
+	
+;********************** COMPARA SE NOTA  *******************	
+	
+	COMPARA_MEDIA PROC
+    
+		fcom  media   	;	Compara com nNotas
+		fstsw ax        ;	Copia o resultado para ax
+		fwait           ;	Garante que a instrucao foi completada
+		sahf            ;	Transfere a condicao para uma flag da cpu
+		
+		ret
+	COMPARA_MEDIA ENDP	
+	
+	
+	end start
+			
+			
