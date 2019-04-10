@@ -12,61 +12,57 @@ includelib \masm32\lib\masm32.lib
 .data
 
 ;-------    STRINGS   -----------
-output  db ? , 0ah, 0h              ; String seguida de nova linha e fim_de_string
+
+output	db ? , 0ah, 0h              ; String seguida de nova linha e fim_de_string
 input   db ? , 0ah, 0h              ; String seguida de nova linha e fim_de_string
-write_count dw 0                    ; Variavel para armazenar caracteres escritos na console
-write_c dw 0
+write_count dd 0                    ; Variavel para armazenar caracteres escritos na console
+write_c dd 0
 
-texto   db "Insira uma nota" , 0ah, 0h
-vazio   db " ", 0ah, 0h
-
-aprovado    db " ** APROVADO ** ", 0ah, 0h
-reprovado   db " ** REPROVADO ** ", 0ah, 0h
-
+texto   db 0Dh, 0Ah, 'Insira o numero de notas: ', 0
+texto2  db "Insira uma nota " , 0h
 
 ;-------    HANDLES   -----------
 chaveSaida   dd 0
 chaveEntrada dd 0
 
-;--------------------------------
-nNotas  dd 3                        ;   Quantidade de notas
+nNotas	dd 3
+cont	dd ?
 
-cont    dd 0                        ;   contador de loops
-
-nota1   dd 10
-nota2   dd 10
-nota3   dd 10
-
-soma    dd 0                        ;   Soma das notas
-media   dd 0                        ;   media das notas
-
+nota	real8 0.0						;   variavel auxiliar que armazena uma nota inserida
+soma	real8 0.0						;   Soma das notas
+media	real8 0.0						;   media das notas
+nNotasf	real8 3.0
 .code  
 start:
 
-    push STD_OUTPUT_HANDLE          ;   Capturando handle de saida
-    call GetStdHandle
-    mov chaveSaida, eax             ;   colocando o handle de saida em um endereco de memoria
+	call OBTER_HANDLES
+	call RESET_REG
+	
+									;   Obtem o numero de notas e atribui o valor para nNotas
 
-    push STD_INPUT_HANDLE           ;   Capturando handle de entrada
-    call GetStdHandle
-    mov chaveEntrada, eax           ;   colocando o handle de entrada em um endereco de memoria
+    invoke WriteConsole, chaveSaida, addr texto, sizeof texto, addr write_count, NULL
+    invoke ReadConsole, chaveEntrada, addr input, sizeof input + 1, addr write_c, NULL
+	
+    call REMOVE_LIXO				;	Remove caracteres invalidos do console
+    call OBTER_VALOR				;	Insere a quantidade de notas na pilha
+    pop nNotas						;	Atribui a quant de notas para nNotas	
 
-    ;Zerar registradores
-    xor eax, eax
-    xor ebx, ebx
-    xor ecx, ecx
-    xor edx, edx
-
-    
-    mov cont, 0   
+	mov cont, 0   					;	zera o contador
 
         ENQUANTO_HOUVER_NOTAS:
-    
-            ;invoke WriteConsole, chaveSaida, addr texto, sizeof texto, addr write_count, NULL
-            invoke ReadConsole, chaveEntrada, addr input, sizeof input, addr write_c, NULL
-            call REMOVE_LIXO
-            call OBTER_NOTA
 
+            invoke WriteConsole, chaveSaida, addr texto2, sizeof texto2, addr write_count, NULL
+            invoke ReadConsole, chaveEntrada, addr input, sizeof input + 1, addr write_c, NULL
+
+			invoke StrToFloat, addr [input], addr [nota]
+			call FUNCAO_SOMA
+			
+			    ;	finit                            ;reset fpu stacks to default
+				;	fld    dword ptr [single_value2] ;single_value2 to fpu stack(st1)
+				;	fld    dword ptr [single_value1] ;single_value1 to fpu stack(st0)
+				;	fcom                             ;compare st0 with st1
+				;	fstsw  ax                        ;ax := fpu status register
+						
             inc cont
             mov ebx, nNotas
             cmp cont, ebx
@@ -74,74 +70,43 @@ start:
             
         FIM_ENQUANTO_HOUVER_NOTAS:
 
-
-    call FUNCAO_SOMA
-    call FUNCAO_MEDIA
-
-
-    cmp media, 7
-    jge APROVADO
-    jmp REPROVADO
-
-        APROVADO:    
-            invoke WriteConsole, chaveSaida, addr aprovado, sizeof aprovado, addr write_count, NULL
-            jmp FIM_A_R
-        REPROVADO:
-            invoke WriteConsole, chaveSaida, addr reprovado, sizeof reprovado, addr write_count, NULL
-            jmp FIM_A_R
-        FIM_A_R:
-
-
-    invoke dwtoa, media, addr output
+		
+	call FUNCAO_MEDIA
+	
+    invoke FloatToStr, [media], addr [output]
     invoke WriteConsole, chaveSaida, addr output, sizeof output, addr write_count, NULL
-    invoke ExitProcess, 0
-
+    
+	invoke ExitProcess, 0
 
 ;##########################   FUNCOES ##########################
-
 
 ;********************** SOMA AS NOTAS   ****************************
 
     FUNCAO_SOMA PROC
-                
-        pop ebx                     ;   guarda o endereco de retorno
-        pop nota3                   ;   captura as notas
-        pop nota2       
-        pop nota1
-        push ebx                    ;   realoca o endereco de retorno
+                        
+		fld nota					;	add nota na pilha da FPU
+		fld soma					;	add soma na pilha da FPU
+		fadd						;	soma + nota
+		fstp soma					;	soma = soma + nota
 
-        mov eax, nota1              ;   opera as somas das notas
-        add eax, nota2
-        add eax, nota3
-        mov soma, eax
+		fld nota					;	Empilha nota novamente na FPU
 
         ret
     FUNCAO_SOMA ENDP
-
-
+	
 ;********************** MEDIA DAS NOTAS   **************************
 
     FUNCAO_MEDIA PROC
 
-        mov eax, soma
-        div nNotas
-        mov media, eax
+		finit
+		fld soma			;	empilha soma
+		fld nNotasf			;	empilha quantidade de notas
+		fdiv				;	soma / nNotas
+		fstp media			;	media = soma / nNotas
+
         ret
 
-    FUNCAO_MEDIA ENDP
-
-;********************** OBTEM ENTRADA DO USUARIO  *******************
-
-    OBTER_NOTA PROC
-    
-        invoke atodw, addr input
-        pop ebx                     ;   guarda endereco de retorno
-        push eax                    ;   armazena uma nota na pilha
-        push ebx                    ;   realoca endereco de retorno
-        ret
-
-    OBTER_NOTA ENDP
-
+    FUNCAO_MEDIA ENDP	
 
 ;********************** REMOVE DA STRING O QUE NAO EH NUMERO    *****
 
@@ -164,10 +129,52 @@ start:
 
     REMOVE_LIXO ENDP
 
-    
-;    invoke atodw, offset numero         ;   String para numero - O conteudo vai para eax
-;    add eax, 10
-;    invoke dwtoa, eax, offset numero    ;   Numero para String, o conteudo de eax vai para o end. de memoria da string
 
+;********************** OBTEM ENTRADA DE NUMERO INTEIRO DO USUARIO  *******************
+
+    OBTER_VALOR PROC
     
+        invoke atodw, addr input
+        pop ebx                     	;   guarda endereco de retorno
+        push eax                    	;   armazena uma nota na pilha
+        push ebx                    	;   realoca endereco de retorno
+        ret
+
+    OBTER_VALOR ENDP
+
+
+;********************** OBTER HANDLES  *******************
+
+    OBTER_HANDLES PROC
+    
+        pop ebx                     	;   guarda endereco de retorno
+        
+        push STD_OUTPUT_HANDLE          ;   Capturando handle de saida
+        call GetStdHandle
+        mov chaveSaida, eax             ;   colocando o handle de saida em um endereco de memoria
+
+        push STD_INPUT_HANDLE           ;   Capturando handle de entrada
+        call GetStdHandle
+        mov chaveEntrada, eax
+
+        push ebx                    	;   realoca endereco de retorno
+        ret
+
+    OBTER_HANDLES ENDP
+
+
+;********************** ZERA OS REGISTRADORES  *******************
+
+    RESET_REG PROC
+    
+        xor eax, eax
+        xor ebx, ebx
+        xor ecx, ecx
+        xor edx, edx
+		
+		finit							;	Reseta FPU
+
+        ret
+    RESET_REG ENDP
+
 end start
