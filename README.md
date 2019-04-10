@@ -3,7 +3,7 @@ Primeiro trabalho da disciplina de Arquitetura de Computadores 1
 
 [Especificação do trabalho]
 
-Escreva um programa que inicialmente pergunte para o usuário quantas avaliações uma disciplina teve. 
+[x] Escreva um programa que inicialmente pergunte para o usuário quantas avaliações uma disciplina teve. 
 
 Em seguida o programa deve receber a quantidade de números de ponto flutuante determinada pelo usuário, referente a avaliações regulares de uma disciplina.
 
