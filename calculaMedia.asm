@@ -25,6 +25,7 @@ texto   db "Insira o numero de notas da disciplina: ", 0h
 texto2  db "Insira uma nota " , 0h
 texto3  db "Insira o nome do aluno ", 0h
 texto4  db 0ah, 0ah, "Deseja inserir notas de um novo aluno? 's' = Sim 'n' = Nao ", 0h
+texto5  db 0ah, 0ah, "** Voce esta digitando uma nota fora dos limites, por favor, tente novamente ** ", 0ah, 0h
 
 aprovado  db " estah ** APROVADO ** com media = " , 0h
 reprovado db " estah ** REPROVADO ** com media = " , 0h
@@ -38,11 +39,13 @@ chaveEntrada dd 0
 
 ;-------    CONSTANTES   -----------
 
+_dez    real8 10.0
 _sete   real8 7.0
 _cinco	real8 5.0
 _quatro real8 4.0
 _pQuatro real8 0.4
 _pSeis	real8 0.6
+_zero   real8 0.0
 
 _reset  real8 0.0
 incr    real8 1.0
@@ -86,7 +89,9 @@ start:
 				invoke WriteConsole, chaveSaida, addr texto2, sizeof texto2, addr write_count, NULL	
 				invoke ReadConsole, chaveEntrada, addr input, sizeof input, addr write_c, NULL
 				invoke StrToFloat, addr [input], addr [nota]		;	Converte o dado recebido para float
-				
+
+                        call VALIDA_NOTA			
+
 				call FUNCAO_SOMA
 
 				call COMPARA_CONT_nNOTAS				;	compara se cont eh menor que nNotas
@@ -362,7 +367,7 @@ start:
 		
 		fld _cinco
 		fld media
-		fsub
+		fsub 
 		fstp media		;	( media * 0.6 - 5 )
 		
 		fld media
@@ -373,5 +378,48 @@ start:
 		
 		ret
 	CALCULA_FINAL ENDP
+
+	;********************** VERIFICA 0 <= nota <= 10  *******************	
+	
+	VALIDA_NOTA PROC
+		
+
+		fld nota
+		fcom _dez	;	Compara com nNotas
+		fstsw ax        ;	Copia o resultado para ax
+		fwait           ;	Garante que a instrucao foi completada
+		sahf            ;	Transfere a condicao para uma flag da cpu
+		fstp nota
+
+            ja    INVALIDO                      ;   Se nota > 10
+
+            fld nota
+            fcom _zero
+		fstsw ax        ;	Copia o resultado para ax
+		fwait           ;	Garante que a instrucao foi completada
+		sahf            ;	Transfere a condicao para uma flag da cpu
+            fstp nota
+
+		jb    INVALIDO				;	Se nota < 0
+	
+            ret
+
+		INVALIDO:
+                invoke WriteConsole, chaveSaida, addr texto5, sizeof texto5, addr write_count, NULL
+
+                ; CONTADOR DECREMENTA
+
+                fld cont
+                fld incr
+                fsub
+		    fstp cont
+
+            pop ebx
+            jmp ENQUANTO_HOUVER_NOTAS
+
+
+           
+	VALIDA_NOTA ENDP
+	
 	
 	end start
