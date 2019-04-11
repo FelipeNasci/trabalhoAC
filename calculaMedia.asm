@@ -15,12 +15,14 @@ includelib \masm32\lib\masm32.lib
 
 output	db 10 dup(0)									;	String seguida de nova linha e fim_de_string
 input   db 10 dup(0)									;	String seguida de nova linha e fim_de_string
-write_count dd 0									;	Variavel para armazenar caracteres escritos na console
+write_count dd 0										;	Variavel para armazenar caracteres escritos na console
 write_c dd 0
 
 texto   db "Insira o numero de notas da disciplina: ", 0h
 texto2  db "Insira uma nota " , 0h
 texto3  db "Insira o nome do aluno ", 0h
+texto4  db 0ah, "Deseja inserir notas de um novo aluno? 's' = Sim 'n' = Nao ", 0h
+
 aprovado  db 0ah,"** APROVADO ** com media = " , 0h
 reprovado db 0ah, "** REPROVADO ** com media = " , 0h
 final	    db 0ah, "** FINAL ** precisando de " , 0h
@@ -32,93 +34,96 @@ chaveSaida   dd 0
 chaveEntrada dd 0
 
 ;-------    VARIAVEIS   -----------
-_sete	real8 7.0
+_sete	      real8 7.0
 _quatro	real8 4.0
 
-nNotas	real8 3.0
-cont	real8 0.0
-incr 	real8 1.0
+nNotas  real8 3.0
+cont    real8 0.0
+incr    real8 1.0
 
 nota	real8 0.0									;   variavel auxiliar que armazena uma nota inserida
 soma	real8 0.0									;   Soma das notas
 media	real8 0.0									;   media das notas
 
+aux	real8 0.0
+
 .code  
 start:
 
 	call OBTER_HANDLES
-	call RESET_REG
-
-    invoke WriteConsole, chaveSaida, addr texto3, sizeof texto3, addr write_count, NULL	;	imprime na tela
-    invoke ReadConsole, chaveEntrada, addr aluno, sizeof aluno, addr write_c, NULL
-
-											;   Obtem o numero de notas e atribui o valor para nNotas
-
-    invoke WriteConsole, chaveSaida, addr texto, sizeof texto, addr write_count, NULL	;	imprime na tela
-    invoke ReadConsole, chaveEntrada, addr input, sizeof input, addr write_c, NULL	;	Captura o dado pelo teclado
 	
-	invoke StrToFloat, addr [input], addr [nNotas]
-		
-        ENQUANTO_HOUVER_NOTAS:
-
-            invoke WriteConsole, chaveSaida, addr texto2, sizeof texto2, addr write_count, NULL	
-            invoke ReadConsole, chaveEntrada, addr input, sizeof input, addr write_c, NULL		
-
-			invoke StrToFloat, addr [input], addr [nota]			;	Converte o dado recebido para float
-			
-			call FUNCAO_SOMA
-			
-			call INC_CONT							;	incrementa cont
-			call COMPARA_CONT_nNOTAS					;	compara se cont eh menor que nNotas
-
-			ja    FIM_ENQUANTO_HOUVER_NOTAS					;	Se maior -> break
-			jb    ENQUANTO_HOUVER_NOTAS					;	Se menor -> cont++
-			;jz    FIM_ENQUANTO_HOUVER_NOTAS				;	Se igual -> break
-			
-        FIM_ENQUANTO_HOUVER_NOTAS:
-
-		
-	call FUNCAO_MEDIA
-
-	fld _sete									;	empilha 7.0
-	call COMPARA_MEDIA								;	compara 7.0 com media
-	fstp _sete
-
-	jb    APROVADO									;	Se 7 < media -> APROVADO
-	jz    APROVADO									;	Se 7 == media -> APROVADO
-
-	fld _quatro									;	empilha 4.0
-	call COMPARA_MEDIA								;	compara 4.0 com media 
-	fstp _quatro
-
-	ja    REPROVADO									;	Se 4 > media -> FINAL
-	jb    FINAL									;	Se 4 < media -> REPROVADO
-	jz    FINAL									;	Se 4 == media -> FINAL
+	WHILE_TRUE:
 	
-		APROVADO:
-		                
-                invoke FloatToStr, [media], addr [output]
-                invoke WriteConsole, chaveSaida, addr aprovado, sizeof aprovado, addr write_count, NULL
-                invoke WriteConsole, chaveSaida, addr output, sizeof output, addr write_count, NULL
-                jmp FIM_A_P_F
-		
-		REPROVADO:
+		call RESET_REG
 
-                invoke FloatToStr, [media], addr [output]
-                invoke WriteConsole, chaveSaida, addr reprovado, sizeof reprovado, addr write_count, NULL
-                invoke WriteConsole, chaveSaida, addr output, sizeof output, addr write_count, NULL
-                jmp FIM_A_P_F
+		invoke WriteConsole, chaveSaida, addr texto3, sizeof texto3, addr write_count, NULL	;	imprime na tela
+		invoke ReadConsole, chaveEntrada, addr aluno, sizeof aluno, addr write_c, NULL
 
-		FINAL:
+												;   Obtem o numero de notas e atribui o valor para nNotas
+
+		invoke WriteConsole, chaveSaida, addr texto, sizeof texto, addr write_count, NULL	;	imprime na tela
+		invoke ReadConsole, chaveEntrada, addr input, sizeof input, addr write_c, NULL	;	Captura o dado pelo teclado
 		
-		;Corrigir
-                invoke FloatToStr, [media], addr [output]
-                invoke WriteConsole, chaveSaida, addr final, sizeof final, addr write_count, NULL
-                invoke WriteConsole, chaveSaida, addr output, sizeof output, addr write_count, NULL
-                jmp FIM_A_P_F
-	       
-            FIM_A_P_F:
-    
+		invoke StrToFloat, addr [input], addr [nNotas]
+		
+			ENQUANTO_HOUVER_NOTAS:
+
+				invoke WriteConsole, chaveSaida, addr texto2, sizeof texto2, addr write_count, NULL	
+				invoke ReadConsole, chaveEntrada, addr input, sizeof input, addr write_c, NULL		
+
+				invoke StrToFloat, addr [input], addr [nota]			;	Converte o dado recebido para float
+				
+				call FUNCAO_SOMA
+
+				invoke FloatToStr, [aux], addr [output]
+				invoke WriteConsole, chaveSaida, addr output, sizeof output, addr write_count, NULL
+
+				call INC_CONT								;	incrementa cont
+				call COMPARA_CONT_nNOTAS					;	compara se cont eh menor que nNotas
+
+				ja    FIM_ENQUANTO_HOUVER_NOTAS				;	Se maior -> break
+				jb    ENQUANTO_HOUVER_NOTAS					;	Se menor -> cont++
+				jz    FIM_ENQUANTO_HOUVER_NOTAS				;	Se igual -> break
+				
+			FIM_ENQUANTO_HOUVER_NOTAS:
+
+			
+		call FUNCAO_MEDIA
+
+		call DECIDE_APROVACAO
+		
+			APROVADO:
+
+				invoke FloatToStr, [media], addr [output]
+				invoke WriteConsole, chaveSaida, addr aprovado, sizeof aprovado, addr write_count, NULL
+				invoke WriteConsole, chaveSaida, addr output, sizeof output, addr write_count, NULL
+				jmp FIM_A_P_F
+			
+			REPROVADO:
+
+				invoke FloatToStr, [media], addr [output]
+				invoke WriteConsole, chaveSaida, addr reprovado, sizeof reprovado, addr write_count, NULL
+				invoke WriteConsole, chaveSaida, addr output, sizeof output, addr write_count, NULL
+				jmp FIM_A_P_F
+
+			FINAL:
+			
+			;Corrigir
+			
+				invoke FloatToStr, [media], addr [output]
+				invoke WriteConsole, chaveSaida, addr final, sizeof final, addr write_count, NULL
+				invoke WriteConsole, chaveSaida, addr output, sizeof output, addr write_count, NULL
+				jmp FIM_A_P_F
+			   
+			FIM_A_P_F:
+			
+			invoke WriteConsole, chaveSaida, addr texto4, sizeof texto4, addr write_count, NULL	;	imprime na tela
+			invoke ReadConsole, chaveEntrada, addr input, sizeof input, addr write_c, NULL
+			
+			cmp input, 115
+			je WHILE_TRUE
+				
+    FIM_WHILE_TRUE:
 	invoke ExitProcess, 0
 
 ;##########################   FUNCOES ##########################
@@ -132,7 +137,7 @@ start:
 		fadd						;	soma + nota
 		fstp soma					;	soma = soma + nota
 
-		fld nota					;	Empilha nota novamente na FPU
+		;fld nota					;	Empilha nota novamente na FPU
 
         ret
     FUNCAO_SOMA ENDP
@@ -209,13 +214,19 @@ start:
 ;********************** ZERA OS REGISTRADORES  *******************
 
     RESET_REG PROC
-    
+
+									;	Zerar variavel cont
+		mov esi, offset cont
+		mov al, [esi]
+		xor al, al
+		mov [esi], al
+	
         xor eax, eax
         xor ebx, ebx
         xor ecx, ecx
         xor edx, edx
 		
-	finit						;	Reseta FPU
+		finit						;	Reseta FPU
 
         ret
     RESET_REG ENDP
@@ -229,6 +240,8 @@ start:
 		fld incr				;	add soma na pilha da FPU
 		fadd					;	cont + 1
 		fstp cont				;	soma = cont + 1
+		;fstp aux
+		;fld aux
 		
 		ret
 	INC_CONT ENDP
@@ -260,6 +273,31 @@ start:
 		ret
 	COMPARA_MEDIA ENDP	
 	
+;********************** DECIDE SE APROVADO / REPROVADO / FINAL  *******************	
+	
+	DECIDE_APROVACAO PROC
+
+		pop ebx												;	desempilha endereco de retorno, 
+															;	pois nunca chegara em ret
+    
+		fld _sete											;	empilha 7.0
+		call COMPARA_MEDIA									;	compara 7.0 com media
+		fstp _sete
+
+		jb    APROVADO										;	Se 7 < media -> APROVADO
+		jz    APROVADO										;	Se 7 == media -> APROVADO
+
+		fld _quatro											;	empilha 4.0
+		call COMPARA_MEDIA									;	compara 4.0 com media 
+		fstp _quatro
+
+		ja    REPROVADO										;	Se 4 > media -> FINAL
+		jb    FINAL											;	Se 4 < media -> REPROVADO
+		jz    FINAL											;	Se 4 == media -> FINAL
+		
+		push ebx
+		ret
+	DECIDE_APROVACAO ENDP	
 	
 	end start
 			
