@@ -13,10 +13,12 @@ includelib \masm32\lib\masm32.lib
 
 ;-------    STRINGS   -----------
 
-output	db 10 dup(0)									;	String seguida de nova linha e fim_de_string
-input   db 10 dup(0)									;	String seguida de nova linha e fim_de_string
+output  db 10 dup(0)									;	String seguida de nova linha e fim_de_string
 write_count dd 0										;	Variavel para armazenar caracteres escritos na console
+input   db 10 dup(0)									;	String seguida de nova linha e fim_de_string
 write_c dd 0
+_str	db 10 dup(0)
+write_str	dd 0
 
 texto   db "Insira o numero de notas da disciplina: ", 0h
 texto2  db "Insira uma nota " , 0h
@@ -33,19 +35,27 @@ aluno   db  100 dup(0)
 chaveSaida   dd 0
 chaveEntrada dd 0
 
-;-------    VARIAVEIS   -----------
-_sete	      real8 7.0
-_quatro	real8 4.0
+;-------    CONSTANTES   -----------
 
+_dez	real8 10.0
+_sete   real8 7.0
+_seis	real8 6.0
+_cinco	real8 5.0
+_quatro real8 4.0
+
+_reset  real8 0.0
+incr    real8 1.0
+
+;-------    VARIAVEIS   -----------
 nNotas  real8 3.0
 cont    real8 0.0
-incr    real8 1.0
 
 nota	real8 0.0									;   variavel auxiliar que armazena uma nota inserida
 soma	real8 0.0									;   Soma das notas
 media	real8 0.0									;   media das notas
 
-aux	real8 0.0
+len			dd 0
+contChar	dd 0
 
 .code  
 start:
@@ -54,7 +64,7 @@ start:
 	
 	WHILE_TRUE:
 	
-		call RESET_REG
+		call RESET_REG							;	RESETA REGISTRADOS E VARIAVEIS A CADA LOOP
 
 		invoke WriteConsole, chaveSaida, addr texto3, sizeof texto3, addr write_count, NULL	;	imprime na tela
 		invoke ReadConsole, chaveEntrada, addr aluno, sizeof aluno, addr write_c, NULL
@@ -63,35 +73,32 @@ start:
 
 		invoke WriteConsole, chaveSaida, addr texto, sizeof texto, addr write_count, NULL	;	imprime na tela
 		invoke ReadConsole, chaveEntrada, addr input, sizeof input, addr write_c, NULL	;	Captura o dado pelo teclado
-		
 		invoke StrToFloat, addr [input], addr [nNotas]
 		
+
 			ENQUANTO_HOUVER_NOTAS:
 
-				invoke WriteConsole, chaveSaida, addr texto2, sizeof texto2, addr write_count, NULL	
-				invoke ReadConsole, chaveEntrada, addr input, sizeof input, addr write_c, NULL		
+				call INC_CONT							;	incrementa cont
 
-				invoke StrToFloat, addr [input], addr [nota]			;	Converte o dado recebido para float
+				invoke WriteConsole, chaveSaida, addr texto2, sizeof texto2, addr write_count, NULL	
+				invoke ReadConsole, chaveEntrada, addr input, sizeof input, addr write_c, NULL
+				invoke StrToFloat, addr [input], addr [nota]		;	Converte o dado recebido para float
 				
 				call FUNCAO_SOMA
 
-				invoke FloatToStr, [aux], addr [output]
-				invoke WriteConsole, chaveSaida, addr output, sizeof output, addr write_count, NULL
-
-				call INC_CONT								;	incrementa cont
 				call COMPARA_CONT_nNOTAS					;	compara se cont eh menor que nNotas
-
 				ja    FIM_ENQUANTO_HOUVER_NOTAS				;	Se maior -> break
 				jb    ENQUANTO_HOUVER_NOTAS					;	Se menor -> cont++
 				jz    FIM_ENQUANTO_HOUVER_NOTAS				;	Se igual -> break
 				
 			FIM_ENQUANTO_HOUVER_NOTAS:
-
 			
 		call FUNCAO_MEDIA
+		
+		call LIMPA_SAIDA									;	EVITA LIXO DE MEMORIA EM OUTPUT
 
 		call DECIDE_APROVACAO
-		
+
 			APROVADO:
 
 				invoke FloatToStr, [media], addr [output]
@@ -107,9 +114,9 @@ start:
 				jmp FIM_A_P_F
 
 			FINAL:
-			
-			;Corrigir
-			
+
+				call CALCULA_FINAL
+
 				invoke FloatToStr, [media], addr [output]
 				invoke WriteConsole, chaveSaida, addr final, sizeof final, addr write_count, NULL
 				invoke WriteConsole, chaveSaida, addr output, sizeof output, addr write_count, NULL
@@ -136,8 +143,6 @@ start:
 		fld soma					;	add soma na pilha da FPU
 		fadd						;	soma + nota
 		fstp soma					;	soma = soma + nota
-
-		;fld nota					;	Empilha nota novamente na FPU
 
         ret
     FUNCAO_SOMA ENDP
@@ -211,22 +216,31 @@ start:
     OBTER_HANDLES ENDP
 
 
-;********************** ZERA OS REGISTRADORES  *******************
+;********************** RESETA REGISTRADORES E VARIAVEIS  *******************
 
     RESET_REG PROC
 
-									;	Zerar variavel cont
-		mov esi, offset cont
-		mov al, [esi]
-		xor al, al
-		mov [esi], al
-	
+        fld _reset
+        fstp cont
+
+        fld _reset
+        fstp nNotas
+        
+        fld _reset
+        fstp nota
+
+        fld _reset
+        fstp soma
+		
+		fld _reset
+        fstp media
+		
         xor eax, eax
         xor ebx, ebx
         xor ecx, ecx
         xor edx, edx
 		
-		finit						;	Reseta FPU
+        finit						;	Reseta FPU
 
         ret
     RESET_REG ENDP
@@ -240,9 +254,7 @@ start:
 		fld incr				;	add soma na pilha da FPU
 		fadd					;	cont + 1
 		fstp cont				;	soma = cont + 1
-		;fstp aux
-		;fld aux
-		
+
 		ret
 	INC_CONT ENDP
 
@@ -298,6 +310,66 @@ start:
 		push ebx
 		ret
 	DECIDE_APROVACAO ENDP	
+	
+	
+;********************** LIMPA STRING  *******************	
+	
+	LIMPA_SAIDA PROC
+		
+		pop ebx						;	guarda o endereco de retorno								;	desempilha endereco de retorno, 
+		
+		mov eax, 0
+		mov contChar, eax			;	ZERA O CONTADOR DE CARACTERES
+		
+		mov eax, sizeof output		;	TAMANHO DE OUTPUT
+		mov len, eax
+		
+		mov esi, offset output		;	PONTEIRO PARA OUTPUT
+
+		ENQUANTO_MENOR_TAMANHO:
+			
+			xor al, al
+			mov [esi], al
+			inc esi
+			
+			inc contChar
+			mov eax, len
+			cmp contChar, eax
+			jl ENQUANTO_MENOR_TAMANHO
+			
+		FIM_ENQUANTO_MENOR_TAMANHO:
+	
+		push ebx
+		ret
+	LIMPA_SAIDA ENDP		
+	
+	
+	;********************** LIMPA STRING  *******************	
+	
+	CALCULA_FINAL PROC
+		
+		fld media
+		fld _seis
+		fmul
+		fstp media		;	media * 0.6
+		
+		fld _cinco
+		fld media
+		fadd
+		fstp media		;	( media * 0.6 + 5 )
+		
+		fld _quatro
+		fld media
+		fdiv
+		fstp media		;	( media * 0.6 + 5 )
+		
+		fld _dez
+		fld media
+		fdiv
+		fstp media		;	( media * 0.6 + 5 )
+		
+		ret
+	CALCULA_FINAL ENDP
 	
 	end start
 			
