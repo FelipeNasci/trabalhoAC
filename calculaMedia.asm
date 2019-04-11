@@ -57,6 +57,9 @@ media	real8 0.0									;   media das notas
 len		dd 0
 contChar	dd 0
 
+
+varA    dd ?
+
 .code  
 start:
 
@@ -69,7 +72,7 @@ start:
 		invoke WriteConsole, chaveSaida, addr texto3, sizeof texto3, addr write_count, NULL	;	imprime na tela
 		invoke ReadConsole, chaveEntrada, addr aluno, sizeof aluno, addr write_c, NULL
 
-												;   Obtem o numero de notas e atribui o valor para nNotas
+										;   Obtem o numero de notas e atribui o valor para nNotas
 
 		invoke WriteConsole, chaveSaida, addr texto, sizeof texto, addr write_count, NULL	;	imprime na tela
 		invoke ReadConsole, chaveEntrada, addr input, sizeof input, addr write_c, NULL	;	Captura o dado pelo teclado
@@ -78,7 +81,7 @@ start:
 
 			ENQUANTO_HOUVER_NOTAS:
 
-				call INC_CONT							;	incrementa cont
+				;call INC_CONT							;	incrementa cont
 
 				invoke WriteConsole, chaveSaida, addr texto2, sizeof texto2, addr write_count, NULL	
 				invoke ReadConsole, chaveEntrada, addr input, sizeof input, addr write_c, NULL
@@ -86,16 +89,16 @@ start:
 				
 				call FUNCAO_SOMA
 
-				call COMPARA_CONT_nNOTAS					;	compara se cont eh menor que nNotas
+				call COMPARA_CONT_nNOTAS				;	compara se cont eh menor que nNotas
 				ja    FIM_ENQUANTO_HOUVER_NOTAS				;	Se maior -> break
-				jb    ENQUANTO_HOUVER_NOTAS					;	Se menor -> cont++
+				jb    ENQUANTO_HOUVER_NOTAS				;	Se menor -> cont++
 				jz    FIM_ENQUANTO_HOUVER_NOTAS				;	Se igual -> break
 				
 			FIM_ENQUANTO_HOUVER_NOTAS:
 			
 		call FUNCAO_MEDIA
 		
-		call LIMPA_SAIDA									;	EVITA LIXO DE MEMORIA EM OUTPUT
+		call LIMPA_SAIDA							;	EVITA LIXO DE MEMORIA EM OUTPUT
 
 		call DECIDE_APROVACAO
 
@@ -127,7 +130,7 @@ start:
 			invoke WriteConsole, chaveSaida, addr texto4, sizeof texto4, addr write_count, NULL	;	imprime na tela
 			invoke ReadConsole, chaveEntrada, addr input, sizeof input, addr write_c, NULL
 			
-			cmp input, 115
+			cmp input, 115                                           ;   Compara se input == 's'
 			je WHILE_TRUE
 				
     FIM_WHILE_TRUE:
@@ -232,7 +235,7 @@ start:
         fld _reset
         fstp soma
 		
-		fld _reset
+	  fld _reset
         fstp media
 		
         xor eax, eax
@@ -262,13 +265,13 @@ start:
 	
 	COMPARA_CONT_nNOTAS PROC
     
-		fld cont		;	empilha cont na FPU
-		fcom  nNotas   	;	Compara com nNotas
-		fstsw ax        ;	Copia o resultado para ax
-		fwait           ;	Garante que a instrucao foi completada
-		sahf            ;	Transfere a condicao para uma flag da cpu
+		fld cont				;	empilha cont na FPU
+		fcom  nNotas   				;	Compara com nNotas
+		fstsw ax        			;	Copia o resultado para ax
+		fwait           			;	Garante que a instrucao foi completada
+		sahf            			;	Transfere a condicao para uma flag da cpu
 
-		fstp cont		;	desempilha cont
+		fstp cont				;	desempilha cont
 		
 		ret
 	COMPARA_CONT_nNOTAS ENDP
@@ -277,7 +280,7 @@ start:
 	
 	COMPARA_MEDIA PROC
     
-		fcom  media   	;	Compara com nNotas
+		fcom  media	;	Compara com nNotas
 		fstsw ax        ;	Copia o resultado para ax
 		fwait           ;	Garante que a instrucao foi completada
 		sahf            ;	Transfere a condicao para uma flag da cpu
@@ -289,23 +292,23 @@ start:
 	
 	DECIDE_APROVACAO PROC
 
-		pop ebx												;	desempilha endereco de retorno, 
-															;	pois nunca chegara em ret
+		pop ebx					;	desempilha endereco de retorno, 
+							;	pois nunca chegara em ret
     
-		fld _sete											;	empilha 7.0
-		call COMPARA_MEDIA									;	compara 7.0 com media
+		fld _sete				;	empilha 7.0
+		call COMPARA_MEDIA			;	compara 7.0 com media
 		fstp _sete
 
-		jb    APROVADO										;	Se 7 < media -> APROVADO
-		jz    APROVADO										;	Se 7 == media -> APROVADO
+		jb    APROVADO				;	Se 7 < media -> APROVADO
+		jz    APROVADO				;	Se 7 == media -> APROVADO
 
-		fld _quatro											;	empilha 4.0
-		call COMPARA_MEDIA									;	compara 4.0 com media 
+		fld _quatro				;	empilha 4.0
+		call COMPARA_MEDIA			;	compara 4.0 com media 
 		fstp _quatro
 
-		ja    REPROVADO										;	Se 4 > media -> FINAL
-		jb    FINAL											;	Se 4 < media -> REPROVADO
-		jz    FINAL											;	Se 4 == media -> FINAL
+		ja    REPROVADO				;	Se 4 > media -> FINAL
+		jb    FINAL				;	Se 4 < media -> REPROVADO
+		jz    FINAL				;	Se 4 == media -> FINAL
 		
 		push ebx
 		ret
@@ -316,15 +319,15 @@ start:
 	
 	LIMPA_SAIDA PROC
 		
-		pop ebx						;	guarda o endereco de retorno								;	desempilha endereco de retorno, 
+		pop ebx					;	guarda o endereco de retorno								;	desempilha endereco de retorno, 
 		
 		mov eax, 0
 		mov contChar, eax			;	ZERA O CONTADOR DE CARACTERES
 		
-		mov eax, sizeof output		;	TAMANHO DE OUTPUT
+		mov eax, sizeof output			;	TAMANHO DE OUTPUT
 		mov len, eax
 		
-		mov esi, offset output		;	PONTEIRO PARA OUTPUT
+		mov esi, offset output			;	PONTEIRO PARA OUTPUT
 
 		ENQUANTO_MENOR_TAMANHO:
 			
@@ -344,24 +347,27 @@ start:
 	LIMPA_SAIDA ENDP		
 	
 	
-	;********************** LIMPA STRING  *******************	
+	;********************** CALCULA QUANTO O ALUNO PRECISA OBTER NA PROVA FINAL  *******************	
 	
 	CALCULA_FINAL PROC
 		
+            mov eax, 5
+            mov varA, eax
+
 		fld media
 		fld _pSeis
 		fmul
 		fstp media		;	media * 0.6
 		
-		fld _cinco
+		fild varA
 		fld media
 		fsub
-		fstp media		;	( media * 0.6 + 5 )
+		fstp media		;	( media * 0.6 - 5 )
 		
 		fld media
 		fld _pQuatro
 		fdiv
-		fstp media		;	( media * 6 + 5 ) / 4
+		fstp media		;	( media * 0.6 + 5 ) / 0.4
 		
 		
 		ret
