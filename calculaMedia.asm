@@ -37,11 +37,11 @@ chaveEntrada dd 0
 
 ;-------    CONSTANTES   -----------
 
-_dez	real8 10.0
 _sete   real8 7.0
-_seis	real8 6.0
 _cinco	real8 5.0
 _quatro real8 4.0
+_pQuatro real8 0.4
+_pSeis	real8 0.6
 
 _reset  real8 0.0
 incr    real8 1.0
@@ -54,7 +54,7 @@ nota	real8 0.0									;   variavel auxiliar que armazena uma nota inserida
 soma	real8 0.0									;   Soma das notas
 media	real8 0.0									;   media das notas
 
-len			dd 0
+len		dd 0
 contChar	dd 0
 
 .code  
@@ -349,24 +349,20 @@ start:
 	CALCULA_FINAL PROC
 		
 		fld media
-		fld _seis
+		fld _pSeis
 		fmul
 		fstp media		;	media * 0.6
 		
 		fld _cinco
 		fld media
-		fadd
+		fsub
 		fstp media		;	( media * 0.6 + 5 )
 		
-		fld _quatro
 		fld media
+		fld _pQuatro
 		fdiv
-		fstp media		;	( media * 0.6 + 5 )
+		fstp media		;	( media * 6 + 5 ) / 4
 		
-		fld _dez
-		fld media
-		fdiv
-		fstp media		;	( media * 0.6 + 5 )
 		
 		ret
 	CALCULA_FINAL ENDP
