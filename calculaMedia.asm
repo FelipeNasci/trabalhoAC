@@ -20,16 +20,17 @@ write_c dd 0
 _str	db 10 dup(0)
 write_str	dd 0
 
+bemVindo db "Bem vindo ao sistema de notas!", 0ah
 texto   db "Insira o numero de notas da disciplina: ", 0h
 texto2  db "Insira uma nota " , 0h
 texto3  db "Insira o nome do aluno ", 0h
-texto4  db 0ah, "Deseja inserir notas de um novo aluno? 's' = Sim 'n' = Nao ", 0h
+texto4  db 0ah, 0ah, "Deseja inserir notas de um novo aluno? 's' = Sim 'n' = Nao ", 0h
 
-aprovado  db 0ah,"** APROVADO ** com media = " , 0h
-reprovado db 0ah, "** REPROVADO ** com media = " , 0h
-final	    db 0ah, "** FINAL ** precisando de " , 0h
+aprovado  db " estah ** APROVADO ** com media = " , 0h
+reprovado db " estah ** REPROVADO ** com media = " , 0h
+final	    db " estah em ** FINAL ** precisando de " , 0h
 
-aluno   db  100 dup(0)
+aluno   db  30 dup(0)
 
 ;-------    HANDLES   -----------
 chaveSaida   dd 0
@@ -57,14 +58,13 @@ media	real8 0.0									;   media das notas
 len		dd 0
 contChar	dd 0
 
-
-varA    dd ?
-
 .code  
 start:
 
 	call OBTER_HANDLES
 	
+            invoke WriteConsole, chaveSaida, addr bemVindo, sizeof bemVindo, addr write_count, NULL
+
 	WHILE_TRUE:
 	
 		call RESET_REG							;	RESETA REGISTRADOS E VARIAVEIS A CADA LOOP
@@ -81,7 +81,7 @@ start:
 
 			ENQUANTO_HOUVER_NOTAS:
 
-				;call INC_CONT							;	incrementa cont
+                        call INC_CONT							;	incrementa cont
 
 				invoke WriteConsole, chaveSaida, addr texto2, sizeof texto2, addr write_count, NULL	
 				invoke ReadConsole, chaveEntrada, addr input, sizeof input, addr write_c, NULL
@@ -105,6 +105,7 @@ start:
 			APROVADO:
 
 				invoke FloatToStr, [media], addr [output]
+                        invoke WriteConsole, chaveSaida, addr aluno, sizeof aluno, addr write_count, NULL
 				invoke WriteConsole, chaveSaida, addr aprovado, sizeof aprovado, addr write_count, NULL
 				invoke WriteConsole, chaveSaida, addr output, sizeof output, addr write_count, NULL
 				jmp FIM_A_P_F
@@ -112,6 +113,7 @@ start:
 			REPROVADO:
 
 				invoke FloatToStr, [media], addr [output]
+                        invoke WriteConsole, chaveSaida, addr aluno, sizeof aluno, addr write_count, NULL
 				invoke WriteConsole, chaveSaida, addr reprovado, sizeof reprovado, addr write_count, NULL
 				invoke WriteConsole, chaveSaida, addr output, sizeof output, addr write_count, NULL
 				jmp FIM_A_P_F
@@ -121,6 +123,7 @@ start:
 				call CALCULA_FINAL
 
 				invoke FloatToStr, [media], addr [output]
+                        invoke WriteConsole, chaveSaida, addr aluno, sizeof aluno, addr write_count, NULL
 				invoke WriteConsole, chaveSaida, addr final, sizeof final, addr write_count, NULL
 				invoke WriteConsole, chaveSaida, addr output, sizeof output, addr write_count, NULL
 				jmp FIM_A_P_F
@@ -267,7 +270,7 @@ start:
     
 		fld cont				;	empilha cont na FPU
 		fcom  nNotas   				;	Compara com nNotas
-		fstsw ax        			;	Copia o resultado para ax
+		fstsw ax        			;	Se der erro Copia o resultado para ax
 		fwait           			;	Garante que a instrucao foi completada
 		sahf            			;	Transfere a condicao para uma flag da cpu
 
@@ -351,15 +354,13 @@ start:
 	
 	CALCULA_FINAL PROC
 		
-            mov eax, 5
-            mov varA, eax
 
 		fld media
 		fld _pSeis
 		fmul
 		fstp media		;	media * 0.6
 		
-		fild varA
+		fld _cinco
 		fld media
 		fsub
 		fstp media		;	( media * 0.6 - 5 )
@@ -374,5 +375,3 @@ start:
 	CALCULA_FINAL ENDP
 	
 	end start
-			
-			
